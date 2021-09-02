@@ -46,7 +46,20 @@ class ClockReplacer : public Replacer {
   size_t Size() override;
 
  private:
-  // TODO(student): implement me!
+  class Slot {
+   public:
+    frame_id_t frame_id;
+    bool ref;
+    Slot(){};
+    Slot(frame_id_t id, bool r) : frame_id(id), ref(r) {}
+  };
+  
+  std::list<Slot> clock_;
+  size_t capacity_;
+  std::list<Slot>::iterator hand_;
+  std::mutex mtx_;
+
+  void RemoveFrame(std::list<Slot>::iterator iter);
 };
 
 }  // namespace bustub
