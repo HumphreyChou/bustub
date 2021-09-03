@@ -15,6 +15,8 @@
 #include <list>
 #include <mutex>  // NOLINT
 #include <vector>
+#include <unordered_set>
+
 
 #include "buffer/replacer.h"
 #include "common/config.h"
@@ -48,18 +50,16 @@ class ClockReplacer : public Replacer {
  private:
   class Slot {
    public:
-    frame_id_t frame_id;
+    bool valid;
     bool ref;
-    Slot(){};
-    Slot(frame_id_t id, bool r) : frame_id(id), ref(r) {}
+    Slot(): valid(false), ref(false) {};
   };
   
-  std::list<Slot> clock_;
+  std::vector<Slot> clock_;
   size_t capacity_;
-  std::list<Slot>::iterator hand_;
+  frame_id_t hand_;
+  size_t size_;
   std::mutex mtx_;
-
-  void RemoveFrame(std::list<Slot>::iterator iter);
 };
 
 }  // namespace bustub

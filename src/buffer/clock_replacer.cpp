@@ -17,64 +17,54 @@ namespace bustub {
 
 ClockReplacer::ClockReplacer(size_t num_pages) {
   capacity_ = num_pages;
-  clock_ = std::list<Slot>();
-  hand_ = clock_.begin();
+  clock_ = std::vector<Slot>(capacity_);
+  hand_ = 0;
+  size_ = 0;
 }
 
 ClockReplacer::~ClockReplacer() = default;
 
-void ClockReplacer::RemoveFrame(std::list<Slot>::iterator iter) {
-  if (iter == hand_) {
-    hand_ = clock_.erase(hand_);
-    if (hand_ == clock_.end()) hand_ = clock_.begin();
-  } else {
-    clock_.erase(iter);
-  }
-}
-
 bool ClockReplacer::Victim(frame_id_t *frame_id) {
-  if (clock_.size() == 0) {
+  std::lock_guard<std::mutex> latch(mtx_);
+  if (size_ == 0) {
     frame_id = nullptr;
     return false;
   }
-  std::lock_guard<std::mutex> latch(mtx_);
-  while (1) {
-    if (hand_ == clock_.end()) {
-      hand_ = clock_.begin();
+  for (;;hand_ = (hand_ + 1) % capacity_) {
+    if (!clock_[hand_].valid) {
       continue;
     }
-    if (hand_->ref = false) {
-      *frame_id = hand_->frame_id;
-      RemoveFrame(hand_);
+    if (clock_[hand_].ref == false) {
+      *frame_id = hand_;
+      clock_[hand_].valid = false;
+      size_--;
       return true;
     } else {
-      hand_->ref = false;
-      hand_++;
+      clock_[hand_].ref = false;
     }
   }
 }
 
 void ClockReplacer::Pin(frame_id_t frame_id) {
   std::lock_guard<std::mutex> latch(mtx_);
-  for (auto iter = clock_.begin(); iter != clock_.end(); iter++) {
-    if (iter->frame_id == frame_id) {
-      RemoveFrame(iter);
-      break;
-    }
+  if(clock_[frame_id].valid) {
+    clock_[frame_id].valid = false;
+    size_--;
   }
 }
 
 void ClockReplacer::Unpin(frame_id_t frame_id) {
   std::lock_guard<std::mutex> latch(mtx_);
-  hand_ = clock_.insert(hand_, Slot(frame_id, true));
+  if(!clock_[frame_id].valid) {
+    clock_[frame_id].valid = true;
+    clock_[frame_id].ref = true;
+    size_++;
+  }
 }
 
 size_t ClockReplacer::Size() {
   std::lock_guard<std::mutex> latch(mtx_);
-  if (clock_.size() > capacity_) {
-    LOG_ERROR("clock has size %d but buffer has max size %d", clock_.size(), capacity_);
-  }
-  return clock_.size();
+  return size_;
 }
 
 }  // namespace bustub
