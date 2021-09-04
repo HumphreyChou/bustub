@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "buffer/buffer_pool_manager.h"
+#include "include/buffer/clock_replacer.h"
 #include "include/common/logger.h"
 
 #include <list>
@@ -23,7 +24,7 @@ BufferPoolManager::BufferPoolManager(size_t pool_size, DiskManager *disk_manager
   // We allocate a consecutive memory space for the buffer pool.
   // `pages_` is really a misleading name. `frames_` or `buffer_pool_` is much better
   pages_ = new Page[pool_size_];
-  replacer_ = new LRUReplacer(pool_size);
+  replacer_ = new ClockReplacer(pool_size);
 
   // Initially, every page is in the free list.
   for (size_t i = 0; i < pool_size_; ++i) {
@@ -69,7 +70,7 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
     replacer_->Pin(frame_id);
     return p;
   } else {
-    // evict a page in on of the frames
+    // evict a page in one of the frames
     frame_id_t vic_frame;
     if (!replacer_->Victim(&vic_frame)) return nullptr;
 
@@ -154,7 +155,7 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
     Page *p = &pages_[frame_id];
     p->WLatch();
     p->page_id_ = *page_id;
-    p->pin_count_ = 0;
+    p->pin_count_ = 1;
     p->is_dirty_ = false;
     p->ResetMemory();
     p->WUnlatch();
@@ -162,7 +163,10 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
   } else {
     // evict a page in on of the frames
     frame_id_t vic_frame;
-    if(!replacer_->Victim(&vic_frame)) return nullptr; // all pages are pinned
+    // replacer_->Summary();
+    if(!(replacer_->Victim(&vic_frame))) {
+      return nullptr; // all pages are pinned
+    }
 
     Page *vic_page = &pages_[vic_frame];
     vic_page->RLatch();
@@ -177,13 +181,12 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
     Page *p = &pages_[vic_frame];
     p->WLatch();
     p->page_id_ = *page_id;
-    p->pin_count_ = 0;
+    p->pin_count_ = 1;
     p->is_dirty_ = false;
     p->ResetMemory();
     p->WUnlatch();
     return p;    
   }
-  return nullptr;
 }
 
 bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {

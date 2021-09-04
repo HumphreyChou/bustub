@@ -67,4 +67,16 @@ size_t ClockReplacer::Size() {
   return size_;
 }
 
+/*
+void ClockReplacer::Summary() {
+  std::lock_guard<std::mutex> latch(mtx_);
+  LOG_INFO("----------CLOCK SUMMARY----------");
+  for(frame_id_t i = 0; i < capacity_; ++i) {
+    if(clock_[i].valid) {
+      LOG_INFO("frame_id: %d, ref bit: %d", i, clock_[i].ref);
+    }
+  }
+  LOG_INFO("---------------------------------");
+}
+*/
 }  // namespace bustub
