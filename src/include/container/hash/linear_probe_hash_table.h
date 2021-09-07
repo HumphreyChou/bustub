@@ -95,6 +95,9 @@ class LinearProbeHashTable : public HashTable<KeyType, ValueType, KeyComparator>
   // Readers includes inserts and removes, writer is only resize
   ReaderWriterLatch table_latch_;
 
+  // latches for each block
+  std::vector<ReaderWriterLatch> block_latches_;
+
   // Hash function
   HashFunction<KeyType> hash_fn_;
 };
