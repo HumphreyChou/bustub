@@ -66,6 +66,9 @@ class Page {
   /** Sets the page LSN. */
   inline void SetLSN(lsn_t lsn) { memcpy(GetData() + OFFSET_LSN, &lsn, sizeof(lsn_t)); }
 
+  /** Zeroes out the data that is held within the page. */
+  inline void ResetMemory() { memset(data_, OFFSET_PAGE_START, PAGE_SIZE); }
+
  protected:
   static_assert(sizeof(page_id_t) == 4);
   static_assert(sizeof(lsn_t) == 4);
@@ -75,8 +78,6 @@ class Page {
   static constexpr size_t OFFSET_LSN = 4;
 
  private:
-  /** Zeroes out the data that is held within the page. */
-  inline void ResetMemory() { memset(data_, OFFSET_PAGE_START, PAGE_SIZE); }
 
   /** The actual data that is stored within a page. */
   char data_[PAGE_SIZE]{};

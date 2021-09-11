@@ -89,10 +89,12 @@ class LinearProbeHashTable : public HashTable<KeyType, ValueType, KeyComparator>
  private:
   // member variable
   page_id_t header_page_id_;
+  size_t size_;
   BufferPoolManager *buffer_pool_manager_;
   KeyComparator comparator_;
 
   // Readers includes inserts and removes, writer is only resize
+  // once writer latch is hold, any data in hash table can only be acessed by the holder
   ReaderWriterLatch table_latch_;
 
   // latches for each block
@@ -100,6 +102,25 @@ class LinearProbeHashTable : public HashTable<KeyType, ValueType, KeyComparator>
 
   // Hash function
   HashFunction<KeyType> hash_fn_;
+
+  /**
+   * hash a key and find its corresponding slot
+   * @return first: block index of the hashed key; second: slot offset inside the block
+  */
+  std::pair<size_t, slot_offset_t> GetSlot(const KeyType &key);
+
+  /**
+   * implementation of table insertion
+   * never use `table_latche_`, concurrency control is handled by upper level
+   * @return first: whether insertion succeeds; second: whether table is full
+  */
+  std::pair<bool, bool> InsertImpl(HashTableHeaderPage *header, const KeyType &key, const ValueType &value);
+
+  /**
+   * collect all key-value pairs in the hash table and clean up all block pages
+   * @return all key-value pairs in the hash table
+  */
+  std::vector<MappingType> CleanUp(HashTableHeaderPage *header);
 };
 
 }  // namespace bustub
